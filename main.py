@@ -6,10 +6,12 @@ import numpy as np
 import cv2 as cv
 import time
 
+one = 0;
+
 latest_result = None;
 
 # Locate the model path
-model_path = "pose_landmarker_full.task"
+model_path = "pose_landmarker_heavy.task"
 
 # Landmark Point Color
 landmark_color = 255,0,0
@@ -49,6 +51,7 @@ while True:
         print("can't recieve frame (stream end?). Exiting...")
         break
     
+    
     rgb_frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
     
@@ -58,6 +61,9 @@ while True:
     # Draw the most recent result
     if latest_result and latest_result.pose_landmarks:
         annotated = np.copy(rgb_frame)
+        
+        
+        
         for pose_landmarks in latest_result.pose_landmarks:
             drawing_utils.draw_landmarks(
                 image=annotated,
@@ -68,6 +74,14 @@ while True:
                     color=(0, 230, 118), thickness=2
                 ),
             )
+            if one == 0:
+                print(pose_landmarks[0].x)
+                one+=1
+                numpy_array = ([])
+                for landmark in pose_landmarks: 
+                    numpy_array.append(landmark.x)
+                np.savetxt("pose_landmarks.csv", numpy_array, delimiter=",", fmt="%d")
+                
         frame = cv.cvtColor(annotated, cv.COLOR_RGB2BGR)
 
     cv.imshow("Pose Estimation", cv.flip(frame, 1))
