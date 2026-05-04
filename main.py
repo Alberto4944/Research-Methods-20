@@ -1,10 +1,12 @@
 import mediapipe as mp
-from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from mediapipe.tasks.python.vision import drawing_utils
 from mediapipe.tasks.python.vision import drawing_styles
 import numpy as np
 import cv2 as cv
+import time
+
+latest_result = None;
 
 # Locate the model path
 model_path = "pose_landmarker_full.task"
@@ -20,39 +22,24 @@ PoseLandmarkerOptions = mp.tasks.vision.PoseLandmarkerOptions
 PoseLandmarkerResult = mp.tasks.vision.PoseLandmarkerResult
 VisionRunningMode = mp.tasks.vision.RunningMode
 
+def on_result(result, output_image, timestamp_ms):
+    global latest_result
+    latest_result = result
+
 options = PoseLandmarkerOptions(
     base_options=baseOptions(model_asset_path=model_path),
     running_mode=VisionRunningMode.LIVE_STREAM,
-    result_callback=print_result)
+    result_callback=on_result,
+    num_poses=1
+)
 
 # Drawing landmarks on each frame
-def draw_landmarks_on_frame(rgb_image, detection_result):
-    # list of landmarks
-    pose_landmarks_list = detection_result.pose_landmarks 
-    
-    # Copies the numpy array image so the model can annotate on it
-    annotated_image = np.copy(rgb_image) 
-    
-    # Selects the style of points (maybe customize?)
-    pose_landmark_style = drawing_utils.get_default_pose_landmarks_style()
-    
-    # Selects the style of connections (customize?)
-    pose_connection_style = drawing_utils.DrawingSpec(color=(landmark_color), thickness=landmark_thickness)
-    
-    # Draws each point in the landmark list
-    for pose_landmarks in pose_landmarks_list:
-        drawing_utils.draw_landmarks(
-            image=annotated_image,
-            landmark_list=pose_landmarks,
-            connections=vision.PoseLandmarksConnections.POSE_LANDMARKS,
-            landmark_drawing_spec=pose_landmark_style,
-            connection_drawing_spec=pose_connection_style
-        )
-    return annotated_image # Returns the frame with all annotations
-
 
 # Video capture
 cap = cv.VideoCapture(0)
+landmarker = vision.PoseLandmarker.create_from_options(options)
+
+
 if not cap.isOpened():
     print("Cannot open camera")
     exit()
@@ -61,20 +48,31 @@ while True:
     if not ret:
         print("can't recieve frame (stream end?). Exiting...")
         break
-    # cv.imshow('frame', frame)
-    if cv.waitKey(1) == ord('q'):
-        break
-    mp_image = mp.image(image_format=mp.ImageFormat.SRGB, data=numpy_frame_from_opencv)
+    
+    rgb_frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
+    
+    timestamp_ms = int(time.time() * 1000)
+    landmarker.detect_async(mp_image, timestamp_ms)
+        
+    # Draw the most recent result
+    if latest_result and latest_result.pose_landmarks:
+        annotated = np.copy(rgb_frame)
+        for pose_landmarks in latest_result.pose_landmarks:
+            drawing_utils.draw_landmarks(
+                image=annotated,
+                landmark_list=pose_landmarks,
+                connections=vision.PoseLandmarksConnections.POSE_LANDMARKS,
+                landmark_drawing_spec=drawing_styles.get_default_pose_landmarks_style(),
+                connection_drawing_spec=drawing_utils.DrawingSpec(
+                    color=(0, 230, 118), thickness=2
+                ),
+            )
+        frame = cv.cvtColor(annotated, cv.COLOR_RGB2BGR)
 
+    cv.imshow("Pose Estimation", cv.flip(frame, 1))
+    if cv.waitKey(1) & 0xFF == ord("q"):
+        break
+landmarker.close()
 cap.release()
 cv.destroyAllWindows()
-
-
-
-# def print_result(result: PoseLandmarkerResult, output_image: mp.Image, timestamp_ms: int):
-#     print('pose landmarker result: {}'.format(result))
-    
-
-
-# with PoseLandmarker.create_from_options(options) as landmarker:
-    
