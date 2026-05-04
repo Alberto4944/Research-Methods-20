@@ -79,8 +79,10 @@ while True:
                 one+=1
                 numpy_array = ([])
                 for landmark in pose_landmarks: 
-                    numpy_array.append(landmark.x)
-                np.savetxt("pose_landmarks.csv", numpy_array, delimiter=",", fmt="%d")
+                    numpy_array = np.vstack([numpy_array, landmark.x])
+                    numpy_array = np.vstack([numpy_array, landmark.y])
+                    numpy_array = np.vstack([numpy_array, landmark.z])
+                np.savetxt("pose_landmarks.csv", numpy_array, delimiter=",", fmt="%1.16f", header="X,Y,Z", comments="")
                 
         frame = cv.cvtColor(annotated, cv.COLOR_RGB2BGR)
 
