@@ -11,7 +11,11 @@ import time
 
 model_path = ""
 
+frame = 1;
+
 one = 0;
+
+dataset = np.array([1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1])
 
 latest_result = None;
 
@@ -71,11 +75,7 @@ while True:
     # Draw the most recent result
     if latest_result and latest_result.pose_landmarks:
         annotated = np.copy(rgb_frame)
-        
-        
         for pose_landmarks in latest_result.pose_landmarks:
-            
-            
             drawing_utils.draw_landmarks(
                 image=annotated,
                 landmark_list=pose_landmarks,
@@ -85,6 +85,15 @@ while True:
                     color=(255, 0, 0), thickness=4
                 ),
             )
+            
+            all_current_landmarks = np.array([])
+            for landmark in pose_landmarks:
+                current_landmark = np.array([landmark.x, landmark.y, landmark.z])
+                all_current_landmarks = np.append(all_current_landmarks, current_landmark)
+            
+            result = np.vstack((dataset, all_current_landmarks))
+
+            
             # if one == 0:
             #     print(pose_landmarks[0].x)
             #     one+=1
@@ -93,7 +102,7 @@ while True:
             #         numpy_array = np.vstack([numpy_array, landmark.x])
             #         numpy_array = np.vstack([numpy_array, landmark.y])
             #         numpy_array = np.vstack([numpy_array, landmark.z])
-            #     np.savetxt("pose_landmarks.csv", numpy_array, delimiter=",", fmt="%1.16f", header="X,Y,Z", comments="")
+            
                 
         frame = cv.cvtColor(annotated, cv.COLOR_RGB2BGR)
 
@@ -103,3 +112,5 @@ while True:
 landmarker.close()
 cap.release()
 cv.destroyAllWindows()
+
+np.savetxt("pose_landmarks.csv", dataset, delimiter=",", fmt="%1.16f", comments="")
