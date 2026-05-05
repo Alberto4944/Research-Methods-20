@@ -15,7 +15,9 @@ frame = 1;
 
 one = 0;
 
-dataset = np.array([1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1])
+# 1.8 KB per frame
+
+dataset = []
 
 latest_result = None;
 
@@ -53,12 +55,15 @@ options = PoseLandmarkerOptions(
 )
 
 # Video capture
-cap = cv.VideoCapture(1)
+cap = cv.VideoCapture(0)
 landmarker = vision.PoseLandmarker.create_from_options(options)
 
 if not cap.isOpened():
     print("Cannot open camera")
     exit()
+
+dataset = np.array([])
+
 while True:
     ret, frame = cap.read()
     if not ret:
@@ -88,21 +93,12 @@ while True:
             
             all_current_landmarks = np.array([])
             for landmark in pose_landmarks:
-                current_landmark = np.array([landmark.x, landmark.y, landmark.z])
-                all_current_landmarks = np.append(all_current_landmarks, current_landmark)
+                all_current_landmarks = np.append(all_current_landmarks, [landmark.x, landmark.y, landmark.z])
             
-            result = np.vstack((dataset, all_current_landmarks))
-
-            
-            # if one == 0:
-            #     print(pose_landmarks[0].x)
-            #     one+=1
-            #     numpy_array = ([])
-            #     for landmark in pose_landmarks: 
-            #         numpy_array = np.vstack([numpy_array, landmark.x])
-            #         numpy_array = np.vstack([numpy_array, landmark.y])
-            #         numpy_array = np.vstack([numpy_array, landmark.z])
-            
+            if (dataset.size > 0):
+                dataset = np.vstack((dataset, all_current_landmarks))
+            else:
+                dataset = all_current_landmarks
                 
         frame = cv.cvtColor(annotated, cv.COLOR_RGB2BGR)
 
