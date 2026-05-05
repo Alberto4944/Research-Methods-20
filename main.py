@@ -2,14 +2,29 @@ import mediapipe as mp
 from mediapipe.tasks.python import vision
 from mediapipe.tasks.python.vision import drawing_utils
 from mediapipe.tasks.python.vision import drawing_styles
+
+from mediapipe.tasks import python
+
 import numpy as np
 import cv2 as cv
 import time
 
+model_path = ""
+
+one = 0;
+
 latest_result = None;
 
-# Locate the model path
-model_path = "pose_landmarker_full.task"
+selected_model = int(input("Select a Model (1-lite, 2-full, 3-heavy): "))
+
+if selected_model == 1:
+    model_path = "pose_landmarker_lite.task"
+
+elif selected_model == 2:
+    model_path = "pose_landmarker_full.task"
+
+elif selected_model == 3: 
+    model_path = "pose_landmarker_heavy.task"
 
 # Landmark Point Color
 landmark_color = 255,0,0
@@ -33,12 +48,9 @@ options = PoseLandmarkerOptions(
     num_poses=1
 )
 
-# Drawing landmarks on each frame
-
 # Video capture
-cap = cv.VideoCapture(0)
+cap = cv.VideoCapture(1)
 landmarker = vision.PoseLandmarker.create_from_options(options)
-
 
 if not cap.isOpened():
     print("Cannot open camera")
@@ -58,16 +70,28 @@ while True:
     # Draw the most recent result
     if latest_result and latest_result.pose_landmarks:
         annotated = np.copy(rgb_frame)
+        
         for pose_landmarks in latest_result.pose_landmarks:
+            
             drawing_utils.draw_landmarks(
                 image=annotated,
                 landmark_list=pose_landmarks,
                 connections=vision.PoseLandmarksConnections.POSE_LANDMARKS,
                 landmark_drawing_spec=drawing_styles.get_default_pose_landmarks_style(),
                 connection_drawing_spec=drawing_utils.DrawingSpec(
-                    color=(0, 230, 118), thickness=2
+                    color=(255, 0, 0), thickness=4
                 ),
             )
+            # if one == 0:
+            #     print(pose_landmarks[0].x)
+            #     one+=1
+            #     numpy_array = ([])
+            #     for landmark in pose_landmarks: 
+            #         numpy_array = np.vstack([numpy_array, landmark.x])
+            #         numpy_array = np.vstack([numpy_array, landmark.y])
+            #         numpy_array = np.vstack([numpy_array, landmark.z])
+            #     np.savetxt("pose_landmarks.csv", numpy_array, delimiter=",", fmt="%1.16f", header="X,Y,Z", comments="")
+                
         frame = cv.cvtColor(annotated, cv.COLOR_RGB2BGR)
 
     cv.imshow("Pose Estimation", cv.flip(frame, 1))
