@@ -20,6 +20,7 @@ one = 0;
 dataset = []
 
 latest_result = None;
+3
 
 selected_model = int(input("Select a Model (1-lite, 2-full, 3-heavy): "))
 
@@ -55,7 +56,7 @@ options = PoseLandmarkerOptions(
 )
 
 # Video capture
-cap = cv.VideoCapture(0)
+cap = cv.VideoCapture(1)
 landmarker = vision.PoseLandmarker.create_from_options(options)
 
 if not cap.isOpened():
