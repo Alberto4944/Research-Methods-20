@@ -19,7 +19,7 @@ frame = 1;
 selected_capture_method = int(input("Select a capture method (1-Live Camera, 2-Recorded Video): "))
 
 if selected_capture_method == 1:
-    cap = cv.VideoCapture(1)
+    cap = cv.VideoCapture(0)
 else:
     videos = []
     num = 1

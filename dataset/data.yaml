@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['Ball']
+
+roboflow:
+  workspace: alberts-workspace-zvqqq
+  project: alberts-workspace-zvqqq
+  version: dataset
+  license: Private
+  url: https://app.roboflow.com/alberts-workspace-zvqqq/alberts-workspace-zvqqq/dataset
