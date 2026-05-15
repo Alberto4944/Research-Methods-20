@@ -7,6 +7,9 @@ import numpy as np
 import cv2 as cv
 import time
 import os
+from ultralytics import YOLO
+
+total_frames = 0;
 
 dataset = []
 latest_result = None;
@@ -15,6 +18,8 @@ frame = 1;
 # 1.8 KB per frame
 
 # Video capture
+
+ball_model = YOLO("runs/detect/train-3/weights/best.pt")
 
 selected_capture_method = int(input("Select a capture method (1-Live Camera, 2-Recorded Video): "))
 
@@ -69,7 +74,7 @@ elif selected_capture_method == 2:
     options = PoseLandmarkerOptions(
         base_options=baseOptions(model_asset_path=model_path),
         running_mode=VisionRunningMode.VIDEO,
-        num_poses=1,
+        num_poses=2,
         min_pose_detection_confidence=0.3,
         min_tracking_confidence=0.3
     )
@@ -108,6 +113,14 @@ def process_frame(frame, landmarker, dataset):
                 dataset = np.vstack((dataset, all_current_landmarks))
             else:
                 dataset = all_current_landmarks
+    results = ball_model.predict(frame, conf=0.3, verbose=False)
+    ball_x, ball_y = -1.0, -1.0
+    if len(results[0].boxes) > 0:
+        box = results[0].boxes.xywh[0]
+        ball_x, ball_y = float(box[0]), float(box[1])
+        cv.circle(annotated, (int(ball_x), int(ball_y)), 10, (0,255,0), -1)
+    if selected_capture_method == 2:
+        print(f'Frame: {cap.get(cv.CAP_PROP_POS_FRAMES)} / {total_frames}')
     return cv.cvtColor(annotated, cv.COLOR_RGB2BGR), dataset
 
 landmarker = vision.PoseLandmarker.create_from_options(options)
@@ -129,6 +142,8 @@ if selected_capture_method == 2:
     if not cap.isOpened():
         print("Error: Cannot open video file")
         exit()
+    else:
+        total_frames = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
