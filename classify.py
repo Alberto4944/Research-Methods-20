@@ -31,7 +31,7 @@ VisionRunningMode = mp.tasks.vision.RunningMode
 STROKE_LABEL = "forehand_drive"
 OTHER_LABEL  = "other"
 
-MODEL_PATH = "models/pose_landmarker_lite.task"  # same models folder as main.py
+MODEL_PATH = "models/pose_landmarker_full.task"  # same models folder as main.py
 
 # Pick video
 videos_dir = "videos"
