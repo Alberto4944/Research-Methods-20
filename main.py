@@ -8,6 +8,11 @@ import cv2 as cv
 import time
 import os
 # from ultralytics import YOLO
+from feedback import get_feedback
+import joblib
+from joints import JOINT_INDICES, FEATURE_COLS
+
+
 
 # https://arxiv.org/pdf/2302.09657 
 
@@ -17,6 +22,10 @@ dataset = []
 latest_result = None;
 frame = 1;
 ball_tracking = True;
+
+# set this based on your camera setup
+VIEW = "front"  # or "front"
+
 
 # 1.8 KB per frame
 
@@ -56,6 +65,12 @@ elif selected_model == 2:
     model_path = "models/pose_landmarker_full.task"
 elif selected_model == 3: 
     model_path = "models/pose_landmarker_heavy.task"
+    
+classifier = joblib.load("stroke_classifier.pkl") if os.path.exists("stroke_classifier.pkl") else None
+if classifier:
+    print("Classifier loaded")
+else:
+    print("[i] No classifier found — running pose only")
 
 # Landmark Point Color
 landmark_color = 255,0,0
@@ -131,6 +146,11 @@ def draw_selected_landmarks(frame, pose_landmarks_list):
             landmark_drawing_spec=drawing_styles.get_default_pose_landmarks_style(),
             connection_drawing_spec=drawing_utils.DrawingSpec(color=(255, 0, 0), thickness=4)
         )
+    tips = get_feedback(result.pose_landmarks[0], VIEW)
+    for i, tip in enumerate(tips):
+        cv.putText(frame, tip, (10, 120 + i * 30),
+                   cv.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 255), 2)
+
 
 if selected_capture_method == 1:
     options = PoseLandmarkerOptions(
@@ -158,16 +178,36 @@ with PoseLandmarker.create_from_options(options) as landmarker:
             break
         frame_idx = int(cap.get(cv.CAP_PROP_POS_FRAMES))
 
+        # Resize large frames for faster processing
+        h, w = frame.shape[:2]
+        if w > 960:
+            frame = cv.resize(frame, (960, int(h * 960 / w)))
+
         rgb = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
-        timestamp_ms = int(cap.get(cv.CAP_PROP_POS_MSEC))
-        result = landmarker.detect_for_video(mp_image, timestamp_ms)
-        if result.pose_landmarks:
+
+        if selected_capture_method == 1:
+            landmarker.detect_async(mp_image, int(time.time() * 1000))
+            last_result = latest_result
+        else:
+            timestamp_ms = int(cap.get(cv.CAP_PROP_POS_MSEC))
+            result = landmarker.detect_for_video(mp_image, timestamp_ms)
+            if result.pose_landmarks:
                 last_result = result
 
         # Always draw the most recent result (works during pause too)
-        if last_result and last_result.pose_landmarks:
+        if last_result and last_result.pose_landmarks and classifier:
             draw_selected_landmarks(frame, last_result.pose_landmarks)
+            lm_flat = []
+        for idx in JOINT_INDICES:
+            lm = last_result.pose_landmarks[0][idx]
+            lm_flat += [lm.x, lm.y, lm.z]
+        
+        label = classifier.predict([lm_flat])[0]
+        prob  = max(classifier.predict_proba([lm_flat])[0])
+        color = (0, 200, 80) if label == "forehand_drive" else (180, 180, 180)
+        cv.putText(frame, f"{label} {prob:.0%}", (10, 120),
+                cv.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
             
         cv.imshow("Analysis", frame)
 
@@ -175,7 +215,6 @@ with PoseLandmarker.create_from_options(options) as landmarker:
         if cv.waitKey(1) & 0xFF == ord("q"):
             break
 
-landmarker.close()
 cap.release()
 
 # if selected_capture_method == 2:
@@ -183,4 +222,4 @@ cap.release()
     
 cv.destroyAllWindows()
 
-np.savetxt("pose_landmarks.csv", dataset, delimiter=",", fmt="%1.16f", comments="")
+# np.savetxt("pose_landmarks.csv", dataset, delimiter=",", fmt="%1.16f", comments="")  # re-enable when dataset collection is added back
