@@ -1,2 +1,4 @@
-
-    ball_x, ball_y = float(box[0]), float(box[1])
+esult.pose_landmarks[0], view=VIEW)
+    # for i, tip in enumerate(tips):
+    #     cv.putText(frame, tip, (10, 120 + i * 30),
+    #                cv.FONT_HERSHE
