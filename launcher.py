@@ -4,7 +4,6 @@ import webbrowser
 import os
 import sys
 
-# Your GitHub Pages viewer URL
 P5_VIEWER_URL = "https://your-username.github.io/your-repo"
 
 ctk.set_appearance_mode("dark")
