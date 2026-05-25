@@ -3,6 +3,11 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.inspection import permutation_importance
+from sklearn.model_selection import GridSearchCV, train_test_split
+
+from sklearn import tree
 import joblib
 import os
 from joints import FEATURE_COLS
@@ -18,19 +23,20 @@ if not os.path.exists(DATASET):
 print("Loading dataset...")
 df = pd.read_csv(DATASET)
 
-n_fh    = len(df[df["label"] == "forehand_drive"])
-n_other = len(df[df["label"] == "other"])
-print(f"  Total  : {len(df)} frames")
-print(f"  forehand_drive : {n_fh}")
-print(f"  other          : {n_other}")
+# Show counts for every label in the dataset dynamically
+labels = df["label"].unique().tolist()
+print(f"  Total : {len(df)} frames")
+for l in labels:
+    print(f"  {l} : {len(df[df['label'] == l])}")
 
-if n_fh < 30:
-    print("[!] Not enough forehand_drive frames — label more strokes and try again")
-    exit()
+# Warn if any stroke class is too small but don't block training
+for l in labels:
+    if l != "other" and len(df[df["label"] == l]) < 30:
+        print(f"[!] Warning: only {len(df[df['label'] == l])} frames for '{l}' — accuracy may be low")
 
 # Features and labels
-X = df[FEATURE_COLS].values
-y = df["label"].values
+X = df[FEATURE_COLS].to_numpy(dtype=np.float64)
+y = df["label"].to_numpy()
 
 # 80/20 train test split
 X_train, X_test, y_train, y_test = train_test_split(
@@ -39,7 +45,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 print(f"\nTraining on {len(X_train)} frames, testing on {len(X_test)}...")
 
 # Train
-model = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
+model = RandomForestClassifier(n_estimators=300, random_state=42, n_jobs=-1, max_depth=20, min_samples_split=10, class_weight="balanced")
 model.fit(X_train, y_train)
 
 # Results
@@ -47,11 +53,14 @@ y_pred = model.predict(X_test)
 print("\n--- Accuracy ---")
 print(classification_report(y_test, y_pred))
 
+# Confusion matrix — dynamic based on whatever classes exist
 print("--- Confusion Matrix ---")
-cm = confusion_matrix(y_test, y_pred, labels=["forehand_drive", "other"])
-print(f"                 Predicted FH    Predicted Other")
-print(f"  Actual FH      {cm[0][0]:<16} {cm[0][1]}")
-print(f"  Actual Other   {cm[1][0]:<16} {cm[1][1]}")
+cm = confusion_matrix(y_test, y_pred, labels=labels)
+header = f"{'':20}" + "".join(f"{l:20}" for l in labels)
+print(header)
+for i, row_label in enumerate(labels):
+    row = f"  {row_label:18}" + "".join(f"{cm[i][j]:<20}" for j in range(len(labels)))
+    print(row)
 
 # Feature importance
 print("\n--- Top 5 Most Important Joints ---")

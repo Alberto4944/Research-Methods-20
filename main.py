@@ -8,11 +8,9 @@ import cv2 as cv
 import time
 import os
 # from ultralytics import YOLO
-from feedback import get_feedback
+# from feedback import get_feedback
 import joblib
 from joints import JOINT_INDICES, FEATURE_COLS
-
-
 
 # https://arxiv.org/pdf/2302.09657 
 
@@ -53,9 +51,6 @@ else:
     video = int(input("Select a video by typing the file number: "))
     video_path = f"videos/{videos[video-1]}"
     cap = cv.VideoCapture(video_path)
-    # frame_width = int(cap.get(3))  # 3 is cv2.CAP_PROP_FRAME_WIDTH 
-    # frame_height = int(cap.get(4)) # 4 is cv2.CAP_PROP_FRAME_HEIGHT
-    # out = cv.VideoWriter('output.mp4', cv.VideoWriter_fourcc(*'mp4v'), 60, (frame_width, frame_height))
 
 selected_model = int(input("Select a Model (1-lite, 2-full, 3-heavy): "))
 
@@ -85,6 +80,18 @@ VisionRunningMode = mp.tasks.vision.RunningMode
 def on_result(result, output_image, timestamp_ms):
     global latest_result
     latest_result = result
+       
+def draw_selected_landmarks(frame, pose_landmarks_list):
+    """Draw all connections faintly, then highlight tracked joints in bright colour."""
+    for pose_landmarks in pose_landmarks_list:
+        # Draw full skeleton faintly using the tasks drawing_utils
+        drawing_utils.draw_landmarks( # Draws all 33 landmarks
+            image=frame,
+            landmark_list=pose_landmarks,
+            connections=vision.PoseLandmarksConnections.POSE_LANDMARKS,
+            landmark_drawing_spec=drawing_styles.get_default_pose_landmarks_style(),
+            connection_drawing_spec=drawing_utils.DrawingSpec(color=(255, 0, 0), thickness=4)
+        )
 
 
 
@@ -169,57 +176,50 @@ elif selected_capture_method == 2:
     )
 
 with PoseLandmarker.create_from_options(options) as landmarker:
-    frame_idx = 0
     last_result = None
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             print("End of video.")
             break
-        frame_idx = int(cap.get(cv.CAP_PROP_POS_FRAMES))
-
-        # Resize large frames for faster processing
         h, w = frame.shape[:2]
         if w > 960:
             frame = cv.resize(frame, (960, int(h * 960 / w)))
 
-        rgb = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+        if selected_capture_method == 1:
+            frame = cv.flip(frame, 1)
+
+        rgb      = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
 
         if selected_capture_method == 1:
             landmarker.detect_async(mp_image, int(time.time() * 1000))
-            last_result = latest_result
+            last_result = latest_result  # from callback
         else:
             timestamp_ms = int(cap.get(cv.CAP_PROP_POS_MSEC))
             result = landmarker.detect_for_video(mp_image, timestamp_ms)
             if result.pose_landmarks:
                 last_result = result
 
-        # Always draw the most recent result (works during pause too)
-        if last_result and last_result.pose_landmarks and classifier:
+        if last_result and last_result.pose_landmarks:
             draw_selected_landmarks(frame, last_result.pose_landmarks)
-            lm_flat = []
-        for idx in JOINT_INDICES:
-            lm = last_result.pose_landmarks[0][idx]
-            lm_flat += [lm.x, lm.y, lm.z]
-        
-        label = classifier.predict([lm_flat])[0]
-        prob  = max(classifier.predict_proba([lm_flat])[0])
-        color = (0, 200, 80) if label == "forehand_drive" else (180, 180, 180)
-        cv.putText(frame, f"{label} {prob:.0%}", (10, 120),
-                cv.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
             
-        cv.imshow("Analysis", frame)
+            # Classifier
+            if classifier:
+                lm_flat = []
+                for idx in JOINT_INDICES:
+                    lm = last_result.pose_landmarks[0][idx]
+                    lm_flat += [lm.x, lm.y, lm.z]
+                label = classifier.predict([lm_flat])[0]
+                prob  = max(classifier.predict_proba([lm_flat])[0])
+                
+                color = (0, 200, 80) if label == "forehand_drive" else (180, 180, 180)
+                cv.putText(frame, f"{label} {prob:.0%}", (10, 120),
+                           cv.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
 
-        #  Key handling 
+        cv.imshow("Analysis", frame)
         if cv.waitKey(1) & 0xFF == ord("q"):
             break
 
 cap.release()
-
-# if selected_capture_method == 2:
-#     out.release() # This saves the mp4
-    
 cv.destroyAllWindows()
-
-# np.savetxt("pose_landmarks.csv", dataset, delimiter=",", fmt="%1.16f", comments="")  # re-enable when dataset collection is added back
