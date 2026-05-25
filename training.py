@@ -8,7 +8,8 @@ results = model.train(
     data="dataset/data.yaml", # This points to the folder Roboflow created
     epochs=50,      # 50 is usually enough for a small dataset
     imgsz=640,     # Standard resolution
-    plots=True      # This saves charts like 'results.png' for your slides!
+    plots=True,      # This saves charts like 'results.png' for your slides!
+    resume=True
 )
 
 # 3. Export the model
