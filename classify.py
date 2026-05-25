@@ -1,20 +1,3 @@
-"""
-label_strokes.py — Table Tennis Stroke Labeling Tool
-------------------------------------------------------
-Usage:
-    python label_strokes.py
-
-Controls:
-    S         — Mark START of a forehand drive stroke
-    E         — Mark END of a forehand drive stroke (saves segment)
-    D         — Delete last saved segment (undo)
-    SPACE     — Pause / Resume
-    Q         — Quit and save all labeled data to labeled_dataset.csv
-
-Place your videos in a folder called "videos/" next to this script.
-Output: labeled_dataset.csv — only the joints defined in joints.py are saved.
-"""
-
 import cv2 as cv
 import mediapipe as mp
 from mediapipe.tasks.python import vision
@@ -28,7 +11,19 @@ PoseLandmarker = mp.tasks.vision.PoseLandmarker
 PoseLandmarkerOptions = mp.tasks.vision.PoseLandmarkerOptions
 VisionRunningMode = mp.tasks.vision.RunningMode
 
-STROKE_LABEL = "forehand_drive"
+strokes = {
+    1: "forehand_drive",
+    2: "backhand_drive", 
+    3: "forehand_push",
+    4: "backhand_push",
+    5: "forehand_loop",
+}
+
+print("Select stroke to label:")
+for key in strokes.keys():
+    print(f"{key}: {strokes.get(key)}")
+
+STROKE_LABEL = strokes[int(input("Stroke: "))]
 OTHER_LABEL  = "other"
 
 MODEL_PATH = "models/pose_landmarker_full.task"  # same models folder as main.py
@@ -43,10 +38,9 @@ for file in os.listdir(videos_dir):
         videos.append(file)
         print(f"{num}. {file}")
         num+=1
-    choice = int(input("Select a video number")) - 1
+choice = int(input("Select a video number")) - 1
     
 video_path = os.path.join(videos_dir, videos[choice])
-video_path = "videos/IMG_1773.MOV"
 
 # Output CSV 
 output_csv = "labeled_dataset.csv"
@@ -69,11 +63,9 @@ print("Controls: S=Start  E=End  D=Undo  SPACE=Pause  Q=Save+Quit\n")
 
 # Draw helper 
 def draw_selected_landmarks(frame, pose_landmarks_list):
-    """Draw all connections faintly, then highlight tracked joints in bright colour."""
+    # Draws a faint skeleton for the entire body
     h, w = frame.shape[:2]
-
     for pose_landmarks in pose_landmarks_list:
-        # Draw full skeleton faintly using the tasks drawing_utils
         drawing_utils.draw_landmarks(
             image=frame,
             landmark_list=pose_landmarks,
@@ -81,14 +73,15 @@ def draw_selected_landmarks(frame, pose_landmarks_list):
             landmark_drawing_spec=drawing_utils.DrawingSpec(color=(60, 60, 60), thickness=1, circle_radius=1),
             connection_drawing_spec=drawing_utils.DrawingSpec(color=(60, 60, 60), thickness=1)
         )
-        # Overdraw the joints we actually care about in bright yellow/white
-        for idx in JOINT_INDICES:
-            lm = pose_landmarks[idx]
-            cx, cy = int(lm.x * w), int(lm.y * h)
+        
+        # Draws major points for the targeted joints
+        for index in JOINT_INDICES:
+            lm = pose_landmarks[index]
+            cx = int(lm.x * w)
+            cy = int(lm.y * h)
             cv.circle(frame, (cx, cy), 7, (0, 200, 255), -1)
             cv.circle(frame, (cx, cy), 7, (255, 255, 255), 2)
 
-#  oseLandmarker options (VIDEO mode — synchronous, no callback needed) 
 options = PoseLandmarkerOptions(
     base_options=BaseOptions(model_asset_path=MODEL_PATH),
     running_mode=VisionRunningMode.VIDEO,
@@ -99,7 +92,7 @@ options = PoseLandmarkerOptions(
 
 # Main loop 
 with PoseLandmarker.create_from_options(options) as landmarker:
-    frame_idx = 0
+    frame_index = 0
     last_result = None
     while cap.isOpened():
         if not paused:
@@ -109,7 +102,6 @@ with PoseLandmarker.create_from_options(options) as landmarker:
                 break
             frame_idx = int(cap.get(cv.CAP_PROP_POS_FRAMES))
 
-        # Pose detection — skip when paused (timestamps must be monotonically increasing)
         if not paused:
             rgb = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
@@ -124,17 +116,10 @@ with PoseLandmarker.create_from_options(options) as landmarker:
                     lm_flat += [lm.x, lm.y, lm.z]
                 all_frames_data[frame_idx] = lm_flat
 
-        # Always draw the most recent result (works during pause too)
         if last_result and last_result.pose_landmarks:
             draw_selected_landmarks(frame, last_result.pose_landmarks)
 
-        #  HUD overlay 
         h, w = frame.shape[:2]
-
-        # Progress bar
-        progress = frame_idx / max(total_frames, 1)
-        cv.rectangle(frame, (0, h - 12), (w, h), (30, 30, 30), -1)
-        cv.rectangle(frame, (0, h - 12), (int(w * progress), h), (0, 200, 80), -1)
 
         cv.putText(frame, f"Frame {frame_idx}/{total_frames}", (10, 30),
                    cv.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
@@ -183,7 +168,6 @@ with PoseLandmarker.create_from_options(options) as landmarker:
 cap.release()
 cv.destroyAllWindows()
 
-# Write CSV 
 if not all_frames_data:
     print("No pose data collected. Did MediaPipe detect anyone in the video?")
     exit()
@@ -204,5 +188,5 @@ with open(output_csv, "a" if already_exists else "w", newline="") as csvfile:
         rows_written += 1
 
 print(f"\n✓ Saved {rows_written} frames to '{output_csv}'")
-print(f"  forehand_drive : {len(stroke_frames)}")
+print(f"  {STROKE_LABEL} : {len(stroke_frames)}")
 print(f"  other          : {rows_written - len(stroke_frames)}")
