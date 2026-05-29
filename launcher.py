@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-import customtkinter as ctk
-import subprocess
-import webbrowser
-import os
-import sys
-
-P5_VIEWER_URL = "https://your-username.github.io/your-repo"
-
-ctk.set_appearance_mode("dark")
-=======
 import mediapipe as mp
 from mediapipe.tasks.python import vision
 from mediapipe.tasks.python.vision import drawing_utils
@@ -682,7 +671,6 @@ def launch_feedback():
         print("Import get_feedback and pass it a pose_landmarks[0] list to use.")
     
 ctk.set_appearance_mode("light")
->>>>>>> a3fc9d9dc80f7601112d1f3d8387ac90931386ee
 ctk.set_default_color_theme("blue")
 
 class App(ctk.CTk):

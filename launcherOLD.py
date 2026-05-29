@@ -1,12 +1,9 @@
 import customtkinter as ctk
 import subprocess
-import webbrowser
 import os
 import sys
 
-P5_VIEWER_URL = "https://your-username.github.io/your-repo"
-
-ctk.set_appearance_mode("light")
+ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
 class App(ctk.CTk):

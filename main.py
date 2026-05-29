@@ -7,8 +7,8 @@ import numpy as np
 import cv2 as cv
 import time
 import os
-# from ultralytics import YOLO
-# from feedback import get_feedback
+from ultralytics import YOLO
+from feedback import get_feedback
 import joblib
 from joints import JOINT_INDICES, FEATURE_COLS
 
@@ -29,11 +29,11 @@ VIEW = "front"  # or "front"
 
 # Video capture
 
-# if int(input("Do you want to track the ball? 1-Yes, 2-No: ")) == 2:
-#     ball_tracking == False
+if int(input("Do you want to track the ball? 1-Yes, 2-No: ")) == 2:
+    ball_tracking == False
 
-# if ball_tracking:
-#     ball_model = YOLO("runs/detect/train-3/weights/best.pt")
+if ball_tracking:
+    ball_model = YOLO("runs/detect/train-3/weights/best.pt")
 
 selected_capture_method = int(input("Select a capture method (1-Live Camera, 2-Recorded Video): "))
 
@@ -153,10 +153,7 @@ def draw_selected_landmarks(frame, pose_landmarks_list):
             landmark_drawing_spec=drawing_styles.get_default_pose_landmarks_style(),
             connection_drawing_spec=drawing_utils.DrawingSpec(color=(255, 0, 0), thickness=4)
         )
-    tips = get_feedback(result.pose_landmarks[0], VIEW)
-    for i, tip in enumerate(tips):
-        cv.putText(frame, tip, (10, 120 + i * 30),
-                   cv.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 255), 2)
+    
 
 
 if selected_capture_method == 1:
@@ -185,6 +182,8 @@ with PoseLandmarker.create_from_options(options) as landmarker:
         h, w = frame.shape[:2]
         if w > 960:
             frame = cv.resize(frame, (960, int(h * 960 / w)))
+        if w < 960:
+            frame = cv.resize(frame, (960, int(h/w*960)))
 
         if selected_capture_method == 1:
             frame = cv.flip(frame, 1)
@@ -203,7 +202,18 @@ with PoseLandmarker.create_from_options(options) as landmarker:
 
         if last_result and last_result.pose_landmarks:
             draw_selected_landmarks(frame, last_result.pose_landmarks)
-            
+            # FEEDBACK
+            if ball_tracking:
+                results = ball_model.predict(frame, conf=0.3, verbose=False)
+                ball_x, ball_y = -1.0, -1.0
+                if len(results[0].boxes) > 0:
+                    box = results[0].boxes.xywh[0]
+                    ball_x, ball_y = float(box[0]), float(box[1])
+                    cv.circle(frame, (int(ball_x), int(ball_y)), 10, (0,255,0), -1)
+            tips = get_feedback(last_result.pose_landmarks[0], VIEW)
+            for i, tip in enumerate(tips):
+                cv.putText(frame, tip, (400, 120 + i * 30),
+                        cv.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 255), 2)
             # Classifier
             if classifier:
                 lm_flat = []

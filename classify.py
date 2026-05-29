@@ -187,6 +187,6 @@ with open(output_csv, "a" if already_exists else "w", newline="") as csvfile:
         writer.writerow([frame_num, videos[choice]] + all_frames_data[frame_num] + [label])
         rows_written += 1
 
-print(f"\n✓ Saved {rows_written} frames to '{output_csv}'")
+print(f"\nSaved {rows_written} frames to '{output_csv}'")
 print(f"  {STROKE_LABEL} : {len(stroke_frames)}")
 print(f"  other          : {rows_written - len(stroke_frames)}")
