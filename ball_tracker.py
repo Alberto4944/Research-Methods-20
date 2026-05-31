@@ -1,12 +1,20 @@
 import cv2 as cv
 import os
 from ultralytics import YOLO
+from tablecalibration import CalibrateTable
+import numpy as np
 
 file_type_choice = 0;
 files = []
 num = 1
 
-ball_model = YOLO("best_models/best.pt")
+
+ball_model = YOLO("best_models/best2.pt")
+
+def fix_brightness(frame):
+    inv_gamma = 1.0 / 0.8  # adjust this value, lower = darker
+    table = np.array([((i / 255.0) ** inv_gamma) * 255 for i in range(256)], dtype=np.uint8)
+    return cv.LUT(frame, table)
 
 def track_ball(frame):
     h, w = frame.shape[:2]
@@ -19,8 +27,8 @@ def track_ball(frame):
     if len(results[0].boxes) > 0:
         box = results[0].boxes.xywh[0]
         ball_x, ball_y = float(box[0]), float(box[1])
-        cv.circle(frame, (int(ball_x), int(ball_y)), 50, (0,255,0), -1)
-    return frame;    
+        cv.circle(frame, (int(ball_x), int(ball_y)), 10, (0,255,0), -1)
+    return frame, ball_x, ball_y
 
 while file_type_choice != 1 and file_type_choice != 2 and file_type_choice != 3:
     file_type_choice = int(input("Image (1), Video (2), or Live Camera (3): "))
@@ -51,14 +59,34 @@ else:
     cap.set(cv.CAP_PROP_BUFFERSIZE, 1)
 
 if file_type_choice == 2 or file_type_choice == 3:
+    cal = CalibrateTable()
+    cv.namedWindow("Ball Tracking")
+    cv.setMouseCallback("Ball Tracking", cal.handle_click)
     while cap.isOpened():
         ret, frame = cap.read();
         if not ret:
             print("End of video/livestream")
             break
-        cv.imshow("Ball Tracking", track_ball(frame))
-        if cv.waitKey(1) & 0xFF == ord("q"):
+        
+        # frame = fix_brightness(frame)
+
+        frame, ball_x, ball_y = track_ball(frame)
+        
+        if cal.is_calibrated and ball_x != -1.0:
+            cm = cal.convert_pixel_to_cm(ball_x, ball_y)
+            if cm:
+                cv.putText(frame, f"{cm[0]:.1f}cm, {cm[1]:.1f}cm",
+                        (int(ball_x) + 12, int(ball_y)),
+                        cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+
+        cal.draw(frame)  # draws table outline or calibration UI
+        
+        cv.imshow("Ball Tracking", frame)
+        key = cv.waitKey(1) & 0xFF
+        if key == ord("q"):
             break
+        elif key == ord("c"):
+            cal.start_calibrating(frame)  # freeze and start clicking
     cap.release()
     
 cv.destroyAllWindows()
