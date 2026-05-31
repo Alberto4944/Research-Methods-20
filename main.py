@@ -27,13 +27,13 @@ VIEW = "front"  # or "front"
 
 # 1.8 KB per frame
 
-# Video capture
+# Video captureultralytics
 
 if int(input("Do you want to track the ball? 1-Yes, 2-No: ")) == 2:
     ball_tracking == False
 
 if ball_tracking:
-    ball_model = YOLO("runs/detect/train-3/weights/best.pt")
+    ball_model = YOLO("best_models/best.pt")
 
 selected_capture_method = int(input("Select a capture method (1-Live Camera, 2-Recorded Video): "))
 
@@ -44,7 +44,7 @@ else:
     videos = []
     num = 1
     for file in os.listdir("videos"):
-        if file.endswith((".mp4", ".m4a", ".MOV")):
+        if file.endswith((".mp4", ".m4a", ".MOV", ".mov")):
             videos.append(file)
             print(f"{num}. {file}")
             num+=1
@@ -191,41 +191,41 @@ with PoseLandmarker.create_from_options(options) as landmarker:
         rgb      = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
 
-        if selected_capture_method == 1:
-            landmarker.detect_async(mp_image, int(time.time() * 1000))
-            last_result = latest_result  # from callback
-        else:
-            timestamp_ms = int(cap.get(cv.CAP_PROP_POS_MSEC))
-            result = landmarker.detect_for_video(mp_image, timestamp_ms)
-            if result.pose_landmarks:
-                last_result = result
+        # if selected_capture_method == 1:
+        #     landmarker.detect_async(mp_image, int(time.time() * 1000))
+        #     last_result = latest_result  # from callback
+        # else:
+        #     timestamp_ms = int(cap.get(cv.CAP_PROP_POS_MSEC))
+        #     result = landmarker.detect_for_video(mp_image, timestamp_ms)
+        #     if result.pose_landmarks:
+        #         last_result = result
 
-        if last_result and last_result.pose_landmarks:
-            draw_selected_landmarks(frame, last_result.pose_landmarks)
+        # if last_result and last_result.pose_landmarks:
+            # draw_selected_landmarks(frame, last_result.pose_landmarks)
             # FEEDBACK
-            if ball_tracking:
-                results = ball_model.predict(frame, conf=0.3, verbose=False)
-                ball_x, ball_y = -1.0, -1.0
-                if len(results[0].boxes) > 0:
-                    box = results[0].boxes.xywh[0]
-                    ball_x, ball_y = float(box[0]), float(box[1])
-                    cv.circle(frame, (int(ball_x), int(ball_y)), 10, (0,255,0), -1)
-            tips = get_feedback(last_result.pose_landmarks[0], VIEW)
-            for i, tip in enumerate(tips):
-                cv.putText(frame, tip, (400, 120 + i * 30),
-                        cv.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 255), 2)
-            # Classifier
-            if classifier:
-                lm_flat = []
-                for idx in JOINT_INDICES:
-                    lm = last_result.pose_landmarks[0][idx]
-                    lm_flat += [lm.x, lm.y, lm.z]
-                label = classifier.predict([lm_flat])[0]
-                prob  = max(classifier.predict_proba([lm_flat])[0])
+        if ball_tracking:
+            results = ball_model.predict(frame, conf=0.3, verbose=False)
+            ball_x, ball_y = -1.0, -1.0
+            if len(results[0].boxes) > 0:
+                box = results[0].boxes.xywh[0]
+                ball_x, ball_y = float(box[0]), float(box[1])
+                cv.circle(frame, (int(ball_x), int(ball_y)), 25, (0,255,0), -1)
+            # tips = get_feedback(last_result.pose_landmarks[0], VIEW)
+            # for i, tip in enumerate(tips):
+            #     cv.putText(frame, tip, (400, 120 + i * 30),
+            #             cv.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 255), 2)
+            # # Classifier
+            # if classifier:
+            #     lm_flat = []
+            #     for idx in JOINT_INDICES:
+            #         lm = last_result.pose_landmarks[0][idx]
+            #         lm_flat += [lm.x, lm.y, lm.z]
+            #     label = classifier.predict([lm_flat])[0]
+            #     prob  = max(classifier.predict_proba([lm_flat])[0])
                 
-                color = (0, 200, 80) if label == "forehand_drive" else (180, 180, 180)
-                cv.putText(frame, f"{label} {prob:.0%}", (10, 120),
-                           cv.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+            #     color = (0, 200, 80) if label == "forehand_drive" else (180, 180, 180)
+            #     cv.putText(frame, f"{label} {prob:.0%}", (10, 120),
+            #                cv.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
 
         cv.imshow("Analysis", frame)
         if cv.waitKey(1) & 0xFF == ord("q"):

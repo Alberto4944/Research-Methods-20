@@ -11,7 +11,7 @@ elif selected == 2:
 images = []
 num = 1
 for file in os.listdir("images"):
-    if file.endswith((".jpg", ".jpeg", ".png")):
+    if file.endswith((".jpg", ".jpeg", ".png", "HEIC")):
         images.append(file)
         print(f"{num}. {file}")
         num+=1
@@ -21,14 +21,14 @@ image_path = f"images/{images[image-1]}"
 frame = cv.imread(image_path)
 if SELECT_BALL:
     from ultralytics import YOLO
-    ball_model = YOLO("runs/detect/train-3/weights/best.pt")
+    ball_model = YOLO("best_models/best.pt")
 
     results = ball_model.predict(frame, conf=0.3, verbose=False)
     ball_x, ball_y = -1.0, -1.0
     if len(results[0].boxes) > 0:
         box = results[0].boxes.xywh[0]
         ball_x, ball_y = float(box[0]), float(box[1])
-        cv.circle(frame, (int(ball_x), int(ball_y)), 30, (0,255,0), -1)
+        cv.circle(frame, (int(ball_x), int(ball_y)), 50, (0,255,0), -1)
         
     cv.imwrite("output.jpg", frame)
 

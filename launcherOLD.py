@@ -27,9 +27,15 @@ class App(ctk.CTk):
             self.launch_main
         )
         self.run_button(
-            "Run mediapipe and YOLO on images - image.py",
+            "Run mediapipe on images - image.py",
             "Draw the key landmarks or the balls location on an image",
             self.launch_image
+        )
+        
+        self.run_button(
+            "Track the Ball - ball_tracker.py",
+            "Run YOLOv26n on images,videos, and live camera",
+            self.launch_ball_track
         )
         
         self.section_header("Training Models")
@@ -93,6 +99,8 @@ class App(ctk.CTk):
         self.run_script("train-classifier.py")
     def launch_image(self):
         self.run_script("image.py")
+    def launch_ball_track(self):
+        self.run_script("ball_tracker.py")
 
 app = App()
 app.mainloop()
