@@ -30,10 +30,10 @@ VIEW = "front"  # or "front"
 # Video captureultralytics
 
 if int(input("Do you want to track the ball? 1-Yes, 2-No: ")) == 2:
-    ball_tracking == False
+    ball_tracking = False
 
 if ball_tracking:
-    ball_model = YOLO("best_models/best.pt")
+    ball_model = YOLO("best_models/best2.pt")
 
 selected_capture_method = int(input("Select a capture method (1-Live Camera, 2-Recorded Video): "))
 
@@ -80,66 +80,52 @@ VisionRunningMode = mp.tasks.vision.RunningMode
 def on_result(result, output_image, timestamp_ms):
     global latest_result
     latest_result = result
-       
-def draw_selected_landmarks(frame, pose_landmarks_list):
-    """Draw all connections faintly, then highlight tracked joints in bright colour."""
-    for pose_landmarks in pose_landmarks_list:
-        # Draw full skeleton faintly using the tasks drawing_utils
-        drawing_utils.draw_landmarks( # Draws all 33 landmarks
-            image=frame,
-            landmark_list=pose_landmarks,
-            connections=vision.PoseLandmarksConnections.POSE_LANDMARKS,
-            landmark_drawing_spec=drawing_styles.get_default_pose_landmarks_style(),
-            connection_drawing_spec=drawing_utils.DrawingSpec(color=(255, 0, 0), thickness=4)
-        )
 
-
-
-# def process_frame(frame, landmarker, dataset):
-#     global latest_result
-#     # 1. OPTIMIZATION: Eliminate array copying. Use explicit conversion for MediaPipe.
-#     rgb_frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
-#     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
+def process_frame(frame, landmarker, dataset):
+    global latest_result
+    # 1. OPTIMIZATION: Eliminate array copying. Use explicit conversion for MediaPipe.
+    rgb_frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
     
-#     if selected_capture_method == 1:
-#         timestamp_ms = int(time.time() * 1000)
-#         landmarker.detect_async(mp_image, timestamp_ms)
-#     else:
-#         timestamp_ms = int(cap.get(cv.CAP_PROP_POS_MSEC))
-#         latest_result = landmarker.detect_for_video(mp_image, timestamp_ms)
+    if selected_capture_method == 1:
+        timestamp_ms = int(time.time() * 1000)
+        landmarker.detect_async(mp_image, timestamp_ms)
+    else:
+        timestamp_ms = int(cap.get(cv.CAP_PROP_POS_MSEC))
+        latest_result = landmarker.detect_for_video(mp_image, timestamp_ms)
         
-#     if ball_tracking:
-#         results = ball_model.predict(frame, conf=0.3, verbose=False)
-#         ball_x, ball_y = -1.0, -1.0
-#         if len(results[0].boxes) > 0:
-#             box = results[0].boxes.xywh[0]
-#             ball_x, ball_y = float(box[0]), float(box[1])
-#             cv.circle(frame, (int(ball_x), int(ball_y)), 10, (0,255,0), -1)
+    if ball_tracking:
+        results = ball_model.predict(frame, conf=0.3, verbose=False)
+        ball_x, ball_y = -1.0, -1.0
+        if len(results[0].boxes) > 0:
+            box = results[0].boxes.xywh[0]
+            ball_x, ball_y = float(box[0]), float(box[1])
+            cv.circle(frame, (int(ball_x), int(ball_y)), 10, (0,255,0), -1)
         
-#     # If the chosen method is live video, use the result callback and do the rest
-#     if latest_result and latest_result.pose_landmarks:
-#         for pose_landmarks in latest_result.pose_landmarks:
-#             drawing_utils.draw_landmarks( # Draws all 33 landmarks
-#                 image=frame,
-#                 landmark_list=pose_landmarks,
-#                 connections=vision.PoseLandmarksConnections.POSE_LANDMARKS,
-#                 landmark_drawing_spec=drawing_styles.get_default_pose_landmarks_style(),
-#                 connection_drawing_spec=drawing_utils.DrawingSpec(color=(255, 0, 0), thickness=4)
-#             )
+    # If the chosen method is live video, use the result callback and do the rest
+    if latest_result and latest_result.pose_landmarks:
+        for pose_landmarks in latest_result.pose_landmarks:
+            drawing_utils.draw_landmarks( # Draws all 33 landmarks
+                image=frame,
+                landmark_list=pose_landmarks,
+                connections=vision.PoseLandmarksConnections.POSE_LANDMARKS,
+                landmark_drawing_spec=drawing_styles.get_default_pose_landmarks_style(),
+                connection_drawing_spec=drawing_utils.DrawingSpec(color=(255, 0, 0), thickness=4)
+            )
             
-#             all_current_landmarks = np.array([])
-#             for landmark in pose_landmarks:
-#                 all_current_landmarks = np.append(all_current_landmarks, [landmark.x, landmark.y, landmark.z])
-#             if (dataset.size > 0):
-#                 dataset = np.vstack((dataset, all_current_landmarks))
-#             else:
-#                 dataset = all_current_landmarks
-#     return frame, dataset
+            all_current_landmarks = np.array([])
+            for landmark in pose_landmarks:
+                all_current_landmarks = np.append(all_current_landmarks, [landmark.x, landmark.y, landmark.z])
+            if (dataset.size > 0):
+                dataset = np.vstack((dataset, all_current_landmarks))
+            else:
+                dataset = all_current_landmarks
+    return frame, dataset
     
 
 # landmarker = vision.PoseLandmarker.create_from_options(options)
 
-# dataset = np.array([])
+dataset = np.array([])
 
         
 def draw_selected_landmarks(frame, pose_landmarks_list):
@@ -191,29 +177,28 @@ with PoseLandmarker.create_from_options(options) as landmarker:
         rgb      = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
 
-        # if selected_capture_method == 1:
-        #     landmarker.detect_async(mp_image, int(time.time() * 1000))
-        #     last_result = latest_result  # from callback
-        # else:
-        #     timestamp_ms = int(cap.get(cv.CAP_PROP_POS_MSEC))
-        #     result = landmarker.detect_for_video(mp_image, timestamp_ms)
-        #     if result.pose_landmarks:
-        #         last_result = result
+        if selected_capture_method == 1:
+            landmarker.detect_async(mp_image, int(time.time() * 1000))
+            last_result = latest_result  # from callback
+        else:
+            timestamp_ms = int(cap.get(cv.CAP_PROP_POS_MSEC))
+            result = landmarker.detect_for_video(mp_image, timestamp_ms)
+            if result.pose_landmarks:
+                last_result = result
 
-        # if last_result and last_result.pose_landmarks:
-            # draw_selected_landmarks(frame, last_result.pose_landmarks)
-            # FEEDBACK
+        if last_result and last_result.pose_landmarks:
+            draw_selected_landmarks(frame, last_result.pose_landmarks)
+            tips = get_feedback(last_result.pose_landmarks[0], VIEW)
+            for i, tip in enumerate(tips):
+                cv.putText(frame, tip, (400, 120 + i * 30),
+                    cv.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 255), 2)
+
         if ball_tracking:
             results = ball_model.predict(frame, conf=0.3, verbose=False)
-            ball_x, ball_y = -1.0, -1.0
             if len(results[0].boxes) > 0:
                 box = results[0].boxes.xywh[0]
                 ball_x, ball_y = float(box[0]), float(box[1])
-                cv.circle(frame, (int(ball_x), int(ball_y)), 25, (0,255,0), -1)
-            # tips = get_feedback(last_result.pose_landmarks[0], VIEW)
-            # for i, tip in enumerate(tips):
-            #     cv.putText(frame, tip, (400, 120 + i * 30),
-            #             cv.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 255), 2)
+                cv.circle(frame, (int(ball_x), int(ball_y)), 25, (0, 255, 0), -1)
             # # Classifier
             # if classifier:
             #     lm_flat = []

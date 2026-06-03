@@ -22,13 +22,20 @@ def track_ball(frame):
         frame = cv.resize(frame, (960, int(h * 960 / w)))
     if w < 960:
         frame = cv.resize(frame, (960, int(h/w*960)))
-    results = ball_model.predict(frame, conf=0.3, verbose=False)
+    results = ball_model.predict(frame, conf=0.4, verbose=False)
     ball_x, ball_y = -1.0, -1.0
-    if len(results[0].boxes) > 0:
+    if len(results[0].boxes) > 0:        
+        coordinates = (results[0].boxes.xyxy).tolist()[0]
         box = results[0].boxes.xywh[0]
+
+        x1, y1, x2, y2 = coordinates[0], coordinates[1], coordinates[2], coordinates[3]
         ball_x, ball_y = float(box[0]), float(box[1])
-        cv.circle(frame, (int(ball_x), int(ball_y)), 10, (0,255,0), -1)
-    return frame, ball_x, ball_y
+
+        # (Left, Top) = (x, y) and (Right, Bottom) = (x, y)
+        average = (abs(x1-x2) + abs(y1-y2) + abs(x1-y2) + abs(x2-y1)) / 4   
+    
+        cv.circle(frame, (int(ball_x), int(ball_y)), int(average/2), (0,255,0), -1)
+    return frame
 
 while file_type_choice != 1 and file_type_choice != 2 and file_type_choice != 3:
     file_type_choice = int(input("Image (1), Video (2), or Live Camera (3): "))
@@ -70,14 +77,15 @@ if file_type_choice == 2 or file_type_choice == 3:
         
         # frame = fix_brightness(frame)
 
-        frame, ball_x, ball_y = track_ball(frame)
+        # frame, ball_x, ball_y = track_ball(frame)
+        frame = track_ball(frame)
         
-        if cal.is_calibrated and ball_x != -1.0:
-            cm = cal.convert_pixel_to_cm(ball_x, ball_y)
-            if cm:
-                cv.putText(frame, f"{cm[0]:.1f}cm, {cm[1]:.1f}cm",
-                        (int(ball_x) + 12, int(ball_y)),
-                        cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+        # if cal.is_calibrated and ball_x != -1.0:
+        #     cm = cal.convert_pixel_to_cm(ball_x, ball_y)
+        #     if cm:
+        #         cv.putText(frame, f"{cm[0]:.1f}cm, {cm[1]:.1f}cm",
+        #                 (int(ball_x) + 12, int(ball_y)),
+        #                 cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
 
         cal.draw(frame)  # draws table outline or calibration UI
         
