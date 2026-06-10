@@ -74,7 +74,7 @@ def draw_selected_landmarks(frame, pose_landmarks_list):
             connection_drawing_spec=drawing_utils.DrawingSpec(color=(60, 60, 60), thickness=1)
         )
         
-        # Draws major points for the targeted joints
+k# Draws major points for the targeted joints
         for index in JOINT_INDICES:
             lm = pose_landmarks[index]
             cx = int(lm.x * w)
